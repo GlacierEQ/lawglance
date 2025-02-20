@@ -1,0 +1,8 @@
+{
+    "autosave_rule": {
+        "description": "Auto-save AI state every 3 steps",
+        "trigger": "step_count % 3 == 0",
+        "action": "save_state::./ai_state.json",
+        "persist": true
+    }
+}
