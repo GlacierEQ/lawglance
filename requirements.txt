@@ -3,7 +3,7 @@ chromadb==0.5.11
 langchain==0.2.9
 langchain-chroma==0.1.4
 langchain-community==0.2.10
-langchain-core==0.2.24
+langchain-core==0.2.43
 langchain-openai
 langchain-text-splitters==0.2.2
 langchainhub==0.1.20
