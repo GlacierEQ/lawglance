@@ -5,7 +5,7 @@ crewai-tools==0.14.0
 langchain==0.3.7
 langchain-chroma==0.1.4
 langchain-cohere==0.3.2
-langchain-community==0.3.7
+langchain-community==0.2.19
 langchain-core==0.3.19
 langchain-experimental==0.3.3
 langchain-groq==0.2.1
