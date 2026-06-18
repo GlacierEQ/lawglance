@@ -1,0 +1,44 @@
+{
+  "strand_id": "Pro_Code",
+  "strand_type": "doctrine",
+  "helix_role": "Double Helix doctrine strand",
+  "paired_strand": "GlacierEQ/pro-code",
+  "paired_strand_role": "Spiral Engine runtime strand",
+  "inherits_from": [
+    "GlacierEQ/aspen-grove-core"
+  ],
+  "exports_to": [
+    "GlacierEQ/pro-code",
+    "GlacierEQ/Pro-Mastermind",
+    "GlacierEQ/mastermind",
+    "GlacierEQ/aspen-grove-core",
+    "GlacierEQ/Pro-CI",
+    "GlacierEQ/Pro-Connectors"
+  ],
+  "authority": {
+    "identity": true,
+    "style": true,
+    "link_library": true,
+    "agent_loading": true,
+    "repo_inheritance": true,
+    "runtime_execution": false
+  },
+  "boot_order_exports": [
+    "CODER-SKILL.md",
+    "STYLE.md",
+    "LINK-LIBRARY.md",
+    "REPO-AUDIT.md",
+    "PLAYBOOK.md",
+    ".helix/inheritance-contract.md",
+    ".links/repo-registry.json",
+    ".mastermind/agent-loading-policy.md"
+  ],
+  "non_goals": [
+    "do_not_store_runtime_secrets",
+    "do_not_store_raw_privileged_evidence",
+    "do_not_replace_pro_code_runtime",
+    "do_not_duplicate_aspen_grove_constellation"
+  ],
+  "phase": "phase_1a_hidden_substrate",
+  "last_updated": "2026-06-18"
+}
