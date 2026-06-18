@@ -1,0 +1,27 @@
+{
+  "repo": "GlacierEQ/Pro_Code",
+  "canonical_name": "Pro_Code",
+  "aliases": ["pro_code", "ProCode", "double-helix-doctrine", "doctrine-strand"],
+  "helix_role": "doctrine_strand",
+  "tier": "flagship_parent",
+  "status": "canonical_live",
+  "mission": "Canonical engineering brain for GlacierEQ APEX: operator identity, coding doctrine, style, link library, ecosystem map, inheritance contracts, and agent loading policy.",
+  "paired_runtime_strand": "GlacierEQ/pro-code",
+  "aspen_grove_root": "GlacierEQ/aspen-grove-core",
+  "mastermind_doctrine": "GlacierEQ/Pro-Mastermind",
+  "mastermind_runtime": "GlacierEQ/mastermind",
+  "primary_visible_files": ["README.md", "CODER-SKILL.md", "STYLE.md", "LINK-LIBRARY.md", "PLAYBOOK.md", "REPO-AUDIT.md", "OPERATOR-PORTFOLIO.md"],
+  "hidden_substrate": {
+    ".apex": "repo identity, operator doctrine, ecosystem authority",
+    ".helix": "double-helix strand contract and paired-runtime binding",
+    ".links": "canonical repo registry and external tool map",
+    ".mastermind": "agent loading, doctrine export, improvement governance",
+    ".audit": "health, drift, and carryover verification"
+  },
+  "pillar_domains": ["coding_standards", "style_doctrine", "agent_identity", "link_library", "repo_inheritance", "memory_architecture"],
+  "piston_domains": ["template_dispatch", "agent_bootstrap", "repo_audit_policy_export"],
+  "secret_policy": "no_raw_secrets_committed_use_secret_ref_only",
+  "evidence_policy": "hash_refs_and_pointer_refs_only_no_raw_privileged_evidence",
+  "phase": "phase_1a_hidden_substrate",
+  "last_updated": "2026-06-18"
+}
