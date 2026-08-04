@@ -1,191 +1,110 @@
+from __future__ import annotations
+
 import os
+import uuid
+
 import streamlit as st
-import random
-import time
-import base64
-from lawglance_main import Lawglance
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_chroma import Chroma
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from dotenv import load_dotenv
-from langchain.schema import HumanMessage
-#This page implements the streamlit UI
-# Set page configuration
-st.set_page_config(page_title="LawGlance", page_icon="logo/logo.png", layout="wide")
+from langchain_chroma import Chroma
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-# Custom CSS for better UI
-def add_custom_css():
-    """Function for a beautiful streamlit UI"""
-    custom_css = """
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-        }
-        .st-chat-input {
-            border-radius: 15px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        .stButton > button {
-            background-color: #0066cc;
-            color: white;
-            font-size: 16px;
-            border-radius: 20px;
-            padding: 10px 20px;
-            margin-top: 5px;
-            transition: background-color 0.3s ease;
-        }
-        .stButton > button:hover {
-            background-color: #0052a3;
-        }
-        .st-chat-message-assistant {
-            background-color: #f7f7f7;
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        .st-chat-message-user {
-            background-color: #d9f0ff;
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        .chat-input-container {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background-color: #f0f0f0;
-            padding: 20px;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-            display: flex;
-            gap: 10px;
-        }
-        .chat-input {
-            flex-grow: 1;
-        }
-        .st-title {
-            font-family: 'Arial', sans-serif;
-            font-weight: bold;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-top: 20px;
-            margin-bottom: 20px;
-        }
-        .logo {
-            width: 40px;
-            height: 30px;
-        }
-        .st-sidebar {
-            background-color: #f9f9f9;
-            padding: 20px;
-        }
-        .st-sidebar header {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .st-sidebar p {
-            font-size: 14px;
-            color: #666;
-        }
-    </style>
-    """
-    st.markdown(custom_css, unsafe_allow_html=True)
+from lawglance_main import Lawglance
 
-add_custom_css()
-##Below Code implementation is tha main functioanlity in building the streamlit application
-# Title with Logo
-logo_path = "logo/logo.png"
-if os.path.exists(logo_path):
-    with open(logo_path, "rb") as image_file:
-        encoded_image = base64.b64encode(image_file.read()).decode()
-    st.markdown(f"""
-    <div class="st-title">
-        <img src="data:image/png;base64,{encoded_image}" alt="LawGlance Logo" class="logo">
-        <span>LawGlance - An AI Legal Assistant </span>
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <div class="st-title">
-        <span>LawGlance - Your Legal Assistant 📖</span>
-    </div>
-    """, unsafe_allow_html=True)
 
-# Sidebar improvements
-st.sidebar.header("About LawGlance")
-st.sidebar.markdown("""
-**LawGlance** is a free, open-source AI legal assistant that helps answer legal questions.
+st.set_page_config(page_title="LawGlance", page_icon="⚖️", layout="wide")
+st.title("LawGlance — Source-Grounded Legal Research")
+st.caption("Internal research assistance. Not legal advice or filing-ready work product.")
 
-Visit our website: [LawGlance](https://lawglance.com)
-
-_Disclaimer_: This tool is in its pilot phase, and responses may not be 100% accurate.
-""")
+with st.sidebar:
+    st.header("Operating boundary")
+    st.markdown(
+        """
+        - Answers are generated only from retrieved context.
+        - Retrieved material is not automatically current or controlling.
+        - Source metadata may be incomplete.
+        - Verify every proposition against primary authority before use.
+        - No deadline, misconduct finding, or legal conclusion is certified here.
+        """
+    )
 
 load_dotenv()
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    st.error("OPENAI_API_KEY is not configured. The application cannot run.")
+    st.stop()
 
-# Load API key
-openai_api_key = os.getenv('OPENAI_API_KEY')
-#Defining the Language Model
-llm = ChatOpenAI(model  = 'gpt-4o-mini' ,temperature = 0.9, openai_api_key = openai_api_key)
-
-#Defining the Embeddings
-embeddings = OpenAIEmbeddings()
-
-#Defining the vector store
-vector_store = Chroma(persist_directory="chroma_db_legal_bot_part1", embedding_function=embeddings)
-
-#Creating the instance of the class Lawglance
+llm = ChatOpenAI(
+    model="gpt-4o-mini",
+    temperature=0.1,
+    openai_api_key=openai_api_key,
+)
+embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
+vector_store = Chroma(
+    persist_directory="chroma_db_legal_bot_part1",
+    embedding_function=embeddings,
+)
 law = Lawglance(llm, embeddings, vector_store)
 
-# Initialize chat history
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat messages from history on app rerun
 for message in st.session_state.messages:
-    role = "user" if message["role"] == "user" else "assistant"
-    with st.chat_message(role):
+    with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message.get("sources"):
+            with st.expander(f"Retrieved sources ({len(message['sources'])})"):
+                for source in message["sources"]:
+                    st.markdown(
+                        f"**{source['source_id']} — {source['title']}**  \n"
+                        f"Locator: `{source['locator']}`  \n"
+                        f"Jurisdiction: `{source.get('jurisdiction') or 'not supplied'}`  \n"
+                        f"Effective date: `{source.get('effective_date') or 'not supplied'}`"
+                    )
+                    if source.get("excerpt"):
+                        st.code(source["excerpt"], language=None)
+        if message.get("grounding"):
+            grounding = message["grounding"]
+            st.caption(f"Grounding status: {grounding['status']}")
+            for warning in grounding.get("warnings", []):
+                st.warning(warning)
 
-# Chat input prompt fixed at the bottom
-st.markdown("<div class='chat-input-container'>", unsafe_allow_html=True)
-# User Input
-prompt = st.chat_input("Have a legal question? Let’s work through it.")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
+prompt = st.chat_input("Ask a legal research question")
 if prompt:
-    # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
-
-    # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Generate answer from LLM
-    query = prompt
-    result = law.conversational(query)
+    try:
+        result = law.conversational(prompt, session_id=st.session_state.session_id)
+    except Exception as exc:
+        st.exception(exc)
+        st.stop()
 
-    # Assistant's response
-    def response_generator(result):
-        response = random.choice([result])
-        for word in response.split():
-            yield word + " "
-            time.sleep(0.05)
-
-    final_response = f"AI Legal Assistant: {result}"
-
-    # Display assistant response in chat message container
     with st.chat_message("assistant"):
-        response = "".join(list(response_generator(final_response)))
-        st.markdown(response)
+        st.markdown(result["answer"] or "The retrieved sources do not support an answer.")
+        with st.expander(f"Retrieved sources ({len(result['sources'])})"):
+            if not result["sources"]:
+                st.write("No sources were returned by retrieval.")
+            for source in result["sources"]:
+                st.markdown(
+                    f"**{source['source_id']} — {source['title']}**  \n"
+                    f"Locator: `{source['locator']}`  \n"
+                    f"Jurisdiction: `{source.get('jurisdiction') or 'not supplied'}`  \n"
+                    f"Effective date: `{source.get('effective_date') or 'not supplied'}`"
+                )
+                if source.get("excerpt"):
+                    st.code(source["excerpt"], language=None)
+        st.caption(f"Grounding status: {result['grounding']['status']}")
+        for warning in result["grounding"].get("warnings", []):
+            st.warning(warning)
 
-    # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": result["answer"] or "The retrieved sources do not support an answer.",
+            "sources": result["sources"],
+            "grounding": result["grounding"],
+        }
+    )
