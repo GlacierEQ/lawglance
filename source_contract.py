@@ -5,6 +5,9 @@ from dataclasses import asdict, dataclass
 from typing import Any, Iterable
 
 
+NO_SUPPORT_ANSWER = "The retrieved sources do not support an answer."
+
+
 @dataclass(frozen=True)
 class SourceCitation:
     source_id: str
@@ -98,6 +101,13 @@ def build_source_report(documents: Iterable[Any]) -> list[dict[str, Any]]:
         seen.add(identity)
         report.append(asdict(citation))
     return report
+
+
+def enforce_grounded_answer(answer: Any, source_report: list[dict[str, Any]]) -> str:
+    if not source_report:
+        return NO_SUPPORT_ANSWER
+    cleaned = _clean(answer)
+    return cleaned or NO_SUPPORT_ANSWER
 
 
 def _missing(value: Any, *, sentinel: str | None = None) -> bool:
