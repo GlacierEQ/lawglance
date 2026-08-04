@@ -9,10 +9,12 @@ from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
-from source_contract import build_source_report, grounding_status
-
-
-NO_SUPPORT_ANSWER = "The retrieved sources do not support an answer."
+from source_contract import (
+    NO_SUPPORT_ANSWER,
+    build_source_report,
+    enforce_grounded_answer,
+    grounding_status,
+)
 
 
 class Lawglance:
@@ -109,11 +111,8 @@ class Lawglance:
         )
 
         sources = build_source_report(response.get("context", []))
-        answer = str(response.get("answer", "")).strip()
-        if not sources:
-            answer = NO_SUPPORT_ANSWER
         return {
-            "answer": answer,
+            "answer": enforce_grounded_answer(response.get("answer"), sources),
             "sources": sources,
             "grounding": grounding_status(sources),
             "query": query.strip(),
