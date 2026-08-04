@@ -1,133 +1,133 @@
-# ⚖️ **LawGlance: AI-Powered Legal Assistant**
+# LawGlance — Source-Grounded Legal Research
 
-[![GitHub stars](https://img.shields.io/github/stars/lawglance/lawglance?style=social)](https://github.com/lawglance/lawglance/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/lawglance/lawglance?style=social)](https://github.com/lawglance/lawglance/forks)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/license/apache-2-0)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1yrS2Kp-kprYWot_sEu7JeWMIRAei_vov?usp=sharing)
-[![Loom](https://img.shields.io/badge/Loom-Tutorial-8A2BE2?logo=loom)](https://www.loom.com/share/dcc6b14c653c4618829f46a9aa2ab68c?sid=00d0d3c1-9d4b-4cf7-8684-cdee76718bd5)
-[![LangChain](https://img.shields.io/badge/LangChain-Open%20SourceFramework-5e9cff?logo=langchain&logoColor=white)](https://python.langchain.com/docs/introduction/)
-[![Crew AI](https://img.shields.io/badge/Crew%20AI-Multi--Agent%20Workflows-00bda?style=flat-square)](https://www.crewai.com/) 
+LawGlance is a Streamlit retrieval-augmented research pilot for the Indian legal materials represented in its reviewed Chroma index. The present repository does not establish coverage of Hawai'i law, United States law, current controlling authority, or any specific case.
 
-### *Bridging the Gap Between People and Legal Access*  🌍
+## Status
 
-🌐 **Website:** [LawGlance](https://lawglance.com/)
+- Application type: Streamlit legal RAG pilot
+- Jurisdictional scope: Indian-law materials described by the project and actually present in the configured index
+- Answer model: OpenAI through LangChain
+- Retrieval: existing local Chroma vector store
+- Filing-ready output: no
+- Current-authority and subsequent-history validation: not implemented
+- External legal action: not implemented
 
-**LawGlance** is a free, open-source, people-centric initiative 💡 designed to make legal guidance accessible to everyone. Using **AI-powered Retriever-Augmented Generation (RAG)**, **LawGlance** delivers quick, accurate legal support tailored to your needs, whether you're seeking information as a layperson or a professional.
+## Source-grounding controls
 
-> 🛡️ **Mission:** “Justice should be accessible to everyone. LawGlance ensures that no one is left behind when it comes to legal knowledge.”
+The hardened response contract contains:
 
-This project is developed with support from mentors and experts at [Data Science Academy](https://datascience.one/) and [Curvelogics](https://www.curvelogics.com/). 💼
+- answer text;
+- retrieved source descriptors;
+- deterministic source identifiers where an index did not supply one;
+- pinpoint locator where supplied;
+- jurisdiction metadata where supplied;
+- effective-date metadata where supplied;
+- bounded source excerpts;
+- grounding status;
+- explicit missing-metadata warnings.
 
----
+Generation temperature is `0.1`. Application code—not merely the prompt—forces the following result whenever retrieval returns no source:
 
-## 📚 **Legal Coverage**
+> The retrieved sources do not support an answer.
 
-LawGlance currently supports the following laws, with plans to expand internationally:
+Sessions are browser-session scoped, require an explicit generated session identifier, and use a bounded in-memory history store. A failed request is not committed to visible conversation history.
 
-- 🏛️ **The Indian Constitution**
-- 📜 **The Bharatiya Nyaya Sanhita, 2023**
-- 🚨 **The Bharatiya Nagarik Suraksha Sanhita, 2023**
-- 🧾 **The Bharatiya Sakshya Adhiniyam, 2023**
-- 📦 **The Consumer Protection Act, 2019**
-- 🧭 **The Motor Vehicles Act, 1988**
-- 💻 **Information Technology Act, 2000**
+## Architecture
 
+```text
+user question
+  -> browser-session history
+  -> standalone research question
+  -> reviewed Chroma directory
+  -> source retrieval
+  -> bounded context-only answer
+  -> deterministic source report
+  -> grounding and metadata warnings
+  -> human legal review
+```
 
-Originally launched as [Niyam SahaAI](https://github.com/niyam-sahaai/niyam-sahaai), **LawGlance** aims to cover legal systems from different countries in the near future.
+## Legal coverage represented by the original project
 
----
+The upstream project describes support for:
 
-## 🎥 **Video Tutorial**
+- Constitution of India;
+- Bharatiya Nyaya Sanhita, 2023;
+- Bharatiya Nagarik Suraksha Sanhita, 2023;
+- Bharatiya Sakshya Adhiniyam, 2023;
+- Consumer Protection Act, 2019;
+- Motor Vehicles Act, 1988;
+- Information Technology Act, 2000.
 
-Curious how **LawGlance** works? Watch this detailed tutorial!
+That description does not prove that every authority is present, current, complete, or correctly indexed. The configured vector store controls what the application can retrieve.
 
-[![Niyam SahaAI Tutorial](https://img.youtube.com/vi/sWpLEApQtvE/0.jpg)](https://www.youtube.com/watch?v=sWpLEApQtvE "Niyam SahaAI Tutorial")
+## Run
 
-<div>
-    <a href="https://www.loom.com/embed/dcc6b14c653c4618829f46a9aa2ab68c?sid=a5a73b89-88a5-4bc2-a633-f97792f6441f">
-      <p>LawGlance </p>
-    </a>
-    <a href=https://www.loom.com/embed/dcc6b14c653c4618829f46a9aa2ab68c?sid=a5a73b89-88a5-4bc2-a633-f97792f6441f">
-      <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/576b26dcd5fb4d74a3a9e1f8187851bc-35587db59696dfef-full-play.gif">
-    </a>
-  </div>
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+export OPENAI_API_KEY=...
+export LAWGLANCE_CHROMA_DIR=/absolute/path/to/reviewed/chroma_db
+streamlit run app.py
+```
 
+The application refuses to start when the configured Chroma directory does not exist, preventing silent creation or use of an empty index from the wrong working directory.
 
+## Dependency generation
 
+The chain implementation uses the current separated package generation:
 
+- `langchain-classic` for legacy retrieval-chain APIs;
+- `langchain-community` for community integrations;
+- `langchain-openai` for OpenAI models and embeddings;
+- `langchain-chroma` for Chroma integration.
 
----
+Versions are pinned together in `requirements.txt` and checked by CI installation and import smoke tests.
 
-## 💻 **Developer Quick Start Guide**
+## Tests
 
-Ready to get started? Follow these simple steps to set up **LawGlance** on your machine:
+```bash
+python -m unittest tests.test_source_contract
+python -m py_compile app.py lawglance_main.py source_contract.py tests/test_source_contract.py
+```
 
-1. **Clone the Repository** 🌀
-    ```bash
-    git clone https://github.com/lawglance/lawglance.git
-    ```
+Tests cover deterministic source identity, authority-version separation, whitespace metadata, exact deduplication, bounded excerpts, missing metadata, and deterministic no-support refusal.
 
-2. **Navigate to the Project Directory** 📂
-    ```bash
-    cd lawglance
-    ```
+## Source metadata contract
 
-3. **Install Dependencies** 📦
-    ```bash
-    pip install -r requirements.txt
-    ```
+Indexed documents should carry:
 
-4. **Set Your OpenAI API Key** 🔑
+```json
+{
+  "source_id": "stable repository or authority identifier",
+  "title": "document or authority title",
+  "pinpoint": "page, paragraph, section, or docket locator",
+  "jurisdiction": "authority jurisdiction",
+  "effective_date": "effective or checked-through date",
+  "source": "controlled URI or internal locator"
+}
+```
 
-   Open `.env` and add your OpenAI API key:
-      ```bash
-      OPENAI_API_KEY=your-api-key-here
-      ```
+Missing metadata is exposed rather than inferred. Generated source identifiers are explicitly flagged and must be replaced by stable identifiers before higher-trust use.
 
-6. **Run the Application** 🚀
-    ```bash
-    streamlit run app.py
-    ```
+## Legal boundary
 
-7. **Access the App** 🌐  
-    Open your browser and visit:  
-    ```bash
-    http://192.168.29.56:8501
-    ```
+Retrieval does not establish that a source is authentic, current, controlling, precedential, admissible, or relevant to a particular matter. A citation candidate is not proposition support. A summary is derivative work product. Every external legal use requires primary-source review, current-authority review, contrary-authority analysis, jurisdiction confirmation, and human approval.
 
----
+The application must not be used to manufacture allegations of fraud, bias, corruption, conspiracy, fabrication, retaliation, obstruction, criminal conduct, or civil-rights violations.
 
-## 🔧 **Tools & Technologies**
+## Data boundary
 
-| 💡 **Technology**  | 🔍 **Description**                            |
-|--------------------|-----------------------------------------------|
-| **LangChain**       | Framework for building language models       |
-| **ChromaDB**        | Vector database for RAG implementation       |
-| **Django**          | High-level Python web framework for robust apps|
-| **OpenAI API**      | Powering natural language understanding      |
+Do not ingest credentials, sealed records, privileged-review notes, private addresses, medical or school records, or protected child information into an unapproved vector store. Preserve native records separately and use controlled identifiers in retrieval metadata.
 
----
+## Unresolved work
 
-## 🌟 **Future Roadmap**
+- source authentication and byte hashing are not implemented;
+- authority freshness and subsequent-history checking are not implemented;
+- retrieval quality has not been benchmarked by jurisdiction or proposition type;
+- a case-specific deployment has not been established;
+- full runtime tests require a reviewed Chroma index and an authorized model credential.
 
-Exciting developments are planned for **LawGlance**! Here’s what’s coming next:
+## License
 
-1. 🎨 **Sleeker User Interface**: Developing a more user-friendly and visually appealing frontend.
-2. 🌍 **Global Expansion**: Supporting legal systems from countries like Canada and more.
-3. 📑 **Expanded Legal Data**:
-   - Supreme Court Judgments
-   - Women-Centric Laws
-   - Consumer Protection & Pollution Laws
-4. 🎙️ **Voice Interaction**: Talk to **LawGlance** using voice commands.
-5. 🌐 **Multi-Lingual Support**: Providing legal assistance in multiple languages for broader reach.
-
----
-
-## 🤝 **Contribute**
-
-We are always looking for contributors! Whether you want to help with development, report issues, or request features, we welcome you to fork the repo and submit a pull request. Every contribution helps to make **LawGlance** better for everyone! 🚀
-
----
-
-**LawGlance** is more than just an AI tool—it's a movement to democratize access to legal knowledge for everyone. Together, let’s make justice truly accessible! ✨
+The repository retains its existing upstream license and attribution history. Confirm the controlling license file and upstream obligations before redistribution or deployment.
