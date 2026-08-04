@@ -6,8 +6,9 @@ on:
       - app.py
       - lawglance_main.py
       - source_contract.py
+      - requirements.txt
       - tests/**
-      - README.md
+      - Readme.md
       - .github/workflows/source-grounding-ci.yml
   push:
     branches: [main]
@@ -15,8 +16,9 @@ on:
       - app.py
       - lawglance_main.py
       - source_contract.py
+      - requirements.txt
       - tests/**
-      - README.md
+      - Readme.md
       - .github/workflows/source-grounding-ci.yml
   workflow_dispatch:
 
@@ -26,7 +28,7 @@ permissions:
 jobs:
   source-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
         with:
@@ -34,5 +36,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements.txt
       - run: python -m py_compile app.py lawglance_main.py source_contract.py tests/test_source_contract.py
+      - run: python -c "import lawglance_main, source_contract; print('import smoke pass')"
       - run: python -m unittest tests.test_source_contract
