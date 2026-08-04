@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict, dataclass
 from typing import Any, Iterable
 
@@ -7,6 +8,7 @@ from typing import Any, Iterable
 @dataclass(frozen=True)
 class SourceCitation:
     source_id: str
+    source_id_generated: bool
     title: str
     locator: str
     excerpt: str
@@ -15,31 +17,62 @@ class SourceCitation:
 
 
 def _clean(value: Any) -> str:
-    return " ".join(str(value or "").split())
+    if value is None:
+        return ""
+    return " ".join(str(value).split())
+
+
+def _first_clean(*values: Any) -> str:
+    for value in values:
+        cleaned = _clean(value)
+        if cleaned:
+            return cleaned
+    return ""
+
+
+def _generated_source_id(
+    *,
+    title: str,
+    locator: str,
+    jurisdiction: str | None,
+    effective_date: str | None,
+    content: str,
+) -> str:
+    payload = "\x1f".join(
+        [title, locator, jurisdiction or "", effective_date or "", content]
+    ).encode("utf-8")
+    return f"GEN-{hashlib.sha256(payload).hexdigest()[:20].upper()}"
 
 
 def citation_from_document(document: Any, index: int) -> SourceCitation:
     metadata = dict(getattr(document, "metadata", {}) or {})
     content = _clean(getattr(document, "page_content", ""))
-    title = _clean(
-        metadata.get("title")
-        or metadata.get("file_name")
-        or metadata.get("filename")
-        or metadata.get("source")
-        or f"Retrieved source {index}"
+    title = _first_clean(
+        metadata.get("title"),
+        metadata.get("file_name"),
+        metadata.get("filename"),
+        metadata.get("source"),
+    ) or f"Retrieved source {index}"
+    locator = _first_clean(
+        metadata.get("pinpoint"),
+        metadata.get("page"),
+        metadata.get("section"),
+        metadata.get("source"),
+    ) or "locator unavailable"
+    jurisdiction = _first_clean(metadata.get("jurisdiction")) or None
+    effective_date = _first_clean(metadata.get("effective_date")) or None
+    supplied_source_id = _first_clean(metadata.get("source_id"))
+    source_id_generated = not bool(supplied_source_id)
+    source_id = supplied_source_id or _generated_source_id(
+        title=title,
+        locator=locator,
+        jurisdiction=jurisdiction,
+        effective_date=effective_date,
+        content=content,
     )
-    locator = _clean(
-        metadata.get("pinpoint")
-        or metadata.get("page")
-        or metadata.get("section")
-        or metadata.get("source")
-        or "locator unavailable"
-    )
-    source_id = _clean(metadata.get("source_id") or f"SRC-{index:03d}")
-    jurisdiction = _clean(metadata.get("jurisdiction")) or None
-    effective_date = _clean(metadata.get("effective_date")) or None
     return SourceCitation(
         source_id=source_id,
+        source_id_generated=source_id_generated,
         title=title,
         locator=locator,
         excerpt=content[:500],
@@ -49,16 +82,27 @@ def citation_from_document(document: Any, index: int) -> SourceCitation:
 
 
 def build_source_report(documents: Iterable[Any]) -> list[dict[str, Any]]:
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str, str, str | None, str | None]] = set()
     report: list[dict[str, Any]] = []
     for index, document in enumerate(documents, start=1):
         citation = citation_from_document(document, index)
-        identity = (citation.source_id, citation.title, citation.locator)
+        identity = (
+            citation.source_id,
+            citation.title,
+            citation.locator,
+            citation.jurisdiction,
+            citation.effective_date,
+        )
         if identity in seen:
             continue
         seen.add(identity)
         report.append(asdict(citation))
     return report
+
+
+def _missing(value: Any, *, sentinel: str | None = None) -> bool:
+    cleaned = _clean(value)
+    return not cleaned or (sentinel is not None and cleaned == sentinel)
 
 
 def grounding_status(source_report: list[dict[str, Any]]) -> dict[str, Any]:
@@ -75,17 +119,22 @@ def grounding_status(source_report: list[dict[str, Any]]) -> dict[str, Any]:
     missing_locators = [
         source["source_id"]
         for source in source_report
-        if source.get("locator") == "locator unavailable"
+        if _missing(source.get("locator"), sentinel="locator unavailable")
     ]
     missing_jurisdiction = [
         source["source_id"]
         for source in source_report
-        if not source.get("jurisdiction")
+        if _missing(source.get("jurisdiction"))
     ]
     missing_effective_date = [
         source["source_id"]
         for source in source_report
-        if not source.get("effective_date")
+        if _missing(source.get("effective_date"))
+    ]
+    generated_source_ids = [
+        source["source_id"]
+        for source in source_report
+        if source.get("source_id_generated")
     ]
 
     warnings = [
@@ -98,6 +147,11 @@ def grounding_status(source_report: list[dict[str, Any]]) -> dict[str, Any]:
         warnings.append(f"Missing jurisdiction metadata: {', '.join(missing_jurisdiction)}")
     if missing_effective_date:
         warnings.append(f"Missing effective-date metadata: {', '.join(missing_effective_date)}")
+    if generated_source_ids:
+        warnings.append(
+            "Generated source identifiers require replacement by stable repository or authority identifiers: "
+            + ", ".join(generated_source_ids)
+        )
 
     return {
         "status": "RETRIEVED_SOURCES_PRESENT",
@@ -106,5 +160,6 @@ def grounding_status(source_report: list[dict[str, Any]]) -> dict[str, Any]:
         "missing_locators": missing_locators,
         "missing_jurisdiction": missing_jurisdiction,
         "missing_effective_date": missing_effective_date,
+        "generated_source_ids": generated_source_ids,
         "warnings": warnings,
     }
