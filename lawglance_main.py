@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from collections import OrderedDict
+
+from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -10,20 +12,20 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from source_contract import build_source_report, grounding_status
 
 
+NO_SUPPORT_ANSWER = "The retrieved sources do not support an answer."
+
+
 class Lawglance:
-    """Conversational legal-research RAG with explicit source-return boundaries.
+    """Conversational legal-research RAG with explicit source-return boundaries."""
 
-    The class retrieves context, generates a bounded answer, and returns both the
-    answer and a structured source report. It does not determine current
-    controlling authority or produce filing-ready legal work.
-    """
-
-    store: dict[str, ChatMessageHistory] = {}
-
-    def __init__(self, llm, embeddings, vector_store):
+    def __init__(self, llm, embeddings, vector_store, *, max_sessions: int = 1):
+        if max_sessions < 1:
+            raise ValueError("max_sessions must be at least 1")
         self.llm = llm
         self.embeddings = embeddings
         self.vector_store = vector_store
+        self.max_sessions = max_sessions
+        self.store: OrderedDict[str, ChatMessageHistory] = OrderedDict()
 
     def _retriever(self):
         return self.vector_store.as_retriever(
@@ -33,13 +35,13 @@ class Lawglance:
 
     def llm_answer_generator(self):
         retriever = self._retriever()
-        contextualize_q_system_prompt = (
-            "Given the chat history and latest question, produce one standalone "
-            "research question. Do not answer it and do not add facts."
-        )
         contextualize_q_prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", contextualize_q_system_prompt),
+                (
+                    "system",
+                    "Given the chat history and latest question, produce one standalone "
+                    "research question. Do not answer it and do not add facts.",
+                ),
                 MessagesPlaceholder("chat_history"),
                 ("human", "{input}"),
             ]
@@ -55,11 +57,11 @@ class Lawglance:
             "Answer only from the supplied context. Distinguish what the context "
             "states from inference. Do not invent a case, quotation, holding, date, "
             "jurisdiction, citation, deadline, element, or procedural posture. If the "
-            "context does not support an answer, say exactly: 'The retrieved sources "
-            "do not support an answer.' Do not characterize conduct as fraud, bias, "
-            "corruption, conspiracy, fabrication, retaliation, obstruction, or a civil-"
-            "rights violation unless the supplied context itself establishes every "
-            "necessary proposition. Treat the answer as internal research assistance."
+            f"context does not support an answer, say exactly: '{NO_SUPPORT_ANSWER}' "
+            "Do not characterize conduct as fraud, bias, corruption, conspiracy, "
+            "fabrication, retaliation, obstruction, criminal conduct, or a civil-rights "
+            "violation unless the supplied context establishes every necessary proposition. "
+            "Treat the answer as internal research assistance."
         )
         qa_prompt = ChatPromptTemplate.from_messages(
             [
@@ -79,11 +81,15 @@ class Lawglance:
         return create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
     def get_session_history(self, session_id: str) -> BaseChatMessageHistory:
-        if session_id not in Lawglance.store:
-            Lawglance.store[session_id] = ChatMessageHistory()
-        return Lawglance.store[session_id]
+        if session_id in self.store:
+            self.store.move_to_end(session_id)
+            return self.store[session_id]
+        self.store[session_id] = ChatMessageHistory()
+        while len(self.store) > self.max_sessions:
+            self.store.popitem(last=False)
+        return self.store[session_id]
 
-    def conversational(self, query: str, session_id: str = "default") -> dict:
+    def conversational(self, query: str, session_id: str) -> dict:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be a non-empty string")
         if not isinstance(session_id, str) or not session_id.strip():
@@ -103,8 +109,11 @@ class Lawglance:
         )
 
         sources = build_source_report(response.get("context", []))
+        answer = str(response.get("answer", "")).strip()
+        if not sources:
+            answer = NO_SUPPORT_ANSWER
         return {
-            "answer": str(response.get("answer", "")).strip(),
+            "answer": answer,
             "sources": sources,
             "grounding": grounding_status(sources),
             "query": query.strip(),
